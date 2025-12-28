@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_
 import structlog
 
-from src.db.models import Listing, ListingDetails
+from src.db.models import Listing, ListingDetails, ApiRequest
 
 logger = structlog.get_logger()
 
@@ -265,4 +265,138 @@ def get_statistics(session: Session) -> Dict[str, int]:
         "active_listings": active,
         "inactive_listings": inactive,
         "republished_listings": republished
+    }
+
+
+# API Request Tracking Functions
+
+def insert_api_request(
+    session: Session,
+    request_type: str,
+    endpoint: str,
+    status_code: Optional[int] = None,
+    duration_ms: Optional[int] = None,
+    request_params: Optional[Dict[str, Any]] = None,
+    error_message: Optional[str] = None,
+    job_id: Optional[str] = None
+) -> ApiRequest:
+    """
+    Insert a new API request record for tracking.
+
+    Args:
+        session: Database session
+        request_type: Type of request ('oauth_token', 'search', etc.)
+        endpoint: API endpoint called
+        status_code: HTTP status code returned
+        duration_ms: Request duration in milliseconds
+        request_params: Request parameters as dictionary
+        error_message: Error message if request failed
+        job_id: Associated job ID for correlation
+
+    Returns:
+        Created ApiRequest object
+    """
+    api_request = ApiRequest(
+        request_type=request_type,
+        endpoint=endpoint,
+        status_code=status_code,
+        duration_ms=duration_ms,
+        request_params=request_params,
+        error_message=error_message,
+        job_id=job_id
+    )
+    session.add(api_request)
+
+    logger.debug(
+        "api_request_tracked",
+        request_type=request_type,
+        endpoint=endpoint,
+        status_code=status_code,
+        duration_ms=duration_ms
+    )
+
+    return api_request
+
+
+def get_api_usage_stats(
+    session: Session,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None
+) -> Dict[str, Any]:
+    """
+    Get API usage statistics for monitoring and quota tracking.
+
+    Args:
+        session: Database session
+        start_date: Start date for filtering (inclusive)
+        end_date: End date for filtering (inclusive)
+
+    Returns:
+        Dictionary with API usage statistics
+    """
+    from sqlalchemy import func, extract
+
+    # Base query
+    query = session.query(ApiRequest)
+
+    # Apply date filters if provided
+    if start_date:
+        query = query.filter(func.date(ApiRequest.created_at) >= start_date)
+    if end_date:
+        query = query.filter(func.date(ApiRequest.created_at) <= end_date)
+
+    # Total requests
+    total_requests = query.count()
+
+    # Requests by type
+    requests_by_type = (
+        query.with_entities(
+            ApiRequest.request_type,
+            func.count(ApiRequest.id).label('count')
+        )
+        .group_by(ApiRequest.request_type)
+        .all()
+    )
+
+    # Success rate (2xx status codes)
+    successful = query.filter(
+        and_(
+            ApiRequest.status_code >= 200,
+            ApiRequest.status_code < 300
+        )
+    ).count()
+
+    # Failed requests (4xx, 5xx)
+    failed = query.filter(
+        ApiRequest.status_code >= 400
+    ).count()
+
+    # Average response time
+    avg_duration = (
+        query.with_entities(func.avg(ApiRequest.duration_ms))
+        .filter(ApiRequest.duration_ms.isnot(None))
+        .scalar()
+    )
+
+    # Monthly quota calculation (excluding OAuth requests)
+    # Assuming 2000 requests/month quota
+    search_requests = query.filter(
+        ApiRequest.request_type != 'oauth_token'
+    ).count()
+
+    quota_limit = 2000
+    quota_remaining = quota_limit - search_requests
+
+    return {
+        "total_requests": total_requests,
+        "search_requests": search_requests,
+        "requests_by_type": dict(requests_by_type),
+        "successful_requests": successful,
+        "failed_requests": failed,
+        "success_rate": round(successful / total_requests * 100, 2) if total_requests > 0 else 0,
+        "avg_duration_ms": round(avg_duration, 2) if avg_duration else None,
+        "monthly_quota_limit": quota_limit,
+        "monthly_quota_used": search_requests,
+        "monthly_quota_remaining": quota_remaining,
+        "quota_usage_percent": round(search_requests / quota_limit * 100, 2) if quota_limit > 0 else 0
     }

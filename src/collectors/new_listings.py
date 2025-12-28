@@ -137,8 +137,8 @@ def run_daily_job():
 
     logger.info("daily_job_started", job_id=job_id, start_time=start_time.isoformat())
 
-    # Initialize API client
-    client = IdealistaClient()
+    # Initialize API client with job_id for request tracking
+    client = IdealistaClient(job_id=job_id)
 
     # Database health check
     if not db.health_check():

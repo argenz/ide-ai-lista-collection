@@ -2,6 +2,7 @@
 -- PostgreSQL 15+
 
 -- Drop tables if they exist (for clean reinstall)
+DROP TABLE IF EXISTS api_requests CASCADE;
 DROP TABLE IF EXISTS listing_images CASCADE;
 DROP TABLE IF EXISTS listing_details CASCADE;
 DROP TABLE IF EXISTS listings CASCADE;
@@ -62,3 +63,32 @@ COMMENT ON COLUMN listings.republished IS 'True if property reappeared after bei
 
 COMMENT ON COLUMN listing_details.previous_prices IS 'JSON object mapping dates to historical prices';
 COMMENT ON COLUMN listing_details.all_fields_json IS 'Complete API response for this property';
+
+-- Table: api_requests
+-- Tracks all Idealista API requests for quota monitoring and analytics
+CREATE TABLE api_requests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    request_type VARCHAR(50) NOT NULL,  -- 'oauth_token', 'search', etc.
+    endpoint VARCHAR(255) NOT NULL,
+    status_code INTEGER,
+    duration_ms INTEGER,
+    request_params JSONB,
+    error_message TEXT,
+    job_id VARCHAR(100),
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+-- Indices for api_requests
+CREATE INDEX idx_api_requests_created_at ON api_requests(created_at);
+CREATE INDEX idx_api_requests_type ON api_requests(request_type);
+CREATE INDEX idx_api_requests_job_id ON api_requests(job_id);
+CREATE INDEX idx_api_requests_status ON api_requests(status_code);
+
+-- Comments for api_requests
+COMMENT ON TABLE api_requests IS 'Tracks all Idealista API requests for quota monitoring';
+COMMENT ON COLUMN api_requests.request_type IS 'Type of request (oauth_token, search, etc.)';
+COMMENT ON COLUMN api_requests.endpoint IS 'API endpoint called';
+COMMENT ON COLUMN api_requests.status_code IS 'HTTP status code returned';
+COMMENT ON COLUMN api_requests.duration_ms IS 'Request duration in milliseconds';
+COMMENT ON COLUMN api_requests.request_params IS 'Request parameters as JSON';
+COMMENT ON COLUMN api_requests.job_id IS 'Associated job ID for correlation';

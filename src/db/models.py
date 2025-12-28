@@ -108,3 +108,27 @@ class ListingImage(Base):
 
     def __repr__(self):
         return f"<ListingImage(property_code='{self.property_code}', tag='{self.image_tag}')>"
+
+
+class ApiRequest(Base):
+    """
+    Tracks all Idealista API requests for quota monitoring and analytics.
+
+    Records every API call including OAuth token requests and search queries.
+    Used for monitoring API usage against quota limits and analyzing performance.
+    """
+
+    __tablename__ = "api_requests"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    request_type = Column(String(50), nullable=False, index=True)
+    endpoint = Column(String(255), nullable=False)
+    status_code = Column(Integer, nullable=True, index=True)
+    duration_ms = Column(Integer, nullable=True)
+    request_params = Column(JSONB, nullable=True)
+    error_message = Column(Text, nullable=True)
+    job_id = Column(String(100), nullable=True, index=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+
+    def __repr__(self):
+        return f"<ApiRequest(type='{self.request_type}', status={self.status_code}, created_at='{self.created_at}')>"

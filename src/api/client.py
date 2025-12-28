@@ -15,6 +15,8 @@ import structlog
 
 from src.api.auth import get_token_manager
 from src.config import settings
+from src.db.connection import db
+from src.db.operations import insert_api_request
 
 logger = structlog.get_logger()
 
@@ -43,12 +45,18 @@ class IdealistaClient:
     BASE_URL = "https://api.idealista.com/3.5"
     RATE_LIMIT_DELAY = 1.0  # seconds between requests
 
-    def __init__(self):
-        """Initialize Idealista API client."""
-        self.token_manager = get_token_manager()
+    def __init__(self, job_id: Optional[str] = None):
+        """
+        Initialize Idealista API client.
+
+        Args:
+            job_id: Optional job ID for correlating API requests with job runs
+        """
+        self.token_manager = get_token_manager(job_id=job_id)
         self.last_request_time: Optional[float] = None
         self.country = settings.api.target_country
-        logger.info("Idealista API client initialized", country=self.country)
+        self.job_id = job_id
+        logger.info("Idealista API client initialized", country=self.country, job_id=job_id)
 
     def _rate_limit(self):
         """Enforce rate limiting (1 request/second)."""
@@ -104,12 +112,18 @@ class IdealistaClient:
             params={k: v for k, v in params.items() if k not in ["apikey", "secret"]}
         )
 
+        # Track request start time
+        start_time = time.time()
+
         response = requests.post(
             url,
             headers=headers,
             data=params,
             timeout=30
         )
+
+        # Calculate duration
+        duration_ms = int((time.time() - start_time) * 1000)
 
         # Handle rate limiting
         if response.status_code == 429:
@@ -136,6 +150,29 @@ class IdealistaClient:
             total_results=data.get("total"),
             items_count=len(data.get("elementList", []))
         )
+
+        # Track API request in database
+        try:
+            session = db.get_session()
+            try:
+                insert_api_request(
+                    session=session,
+                    request_type="search",
+                    endpoint=endpoint,
+                    status_code=response.status_code,
+                    duration_ms=duration_ms,
+                    request_params=params,
+                    error_message=None,
+                    job_id=self.job_id
+                )
+                session.commit()
+            except Exception as e:
+                logger.warning("Failed to track API request", error=str(e))
+                session.rollback()
+            finally:
+                session.close()
+        except Exception as e:
+            logger.warning("Failed to get database session for tracking", error=str(e))
 
         return data
 
