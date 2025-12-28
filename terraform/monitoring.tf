@@ -133,7 +133,7 @@ resource "google_monitoring_dashboard" "ideailista_dashboard" {
                 {
                   timeSeriesQuery = {
                     timeSeriesFilter = {
-                      filter = "resource.type=\"cloudsql_database\" resource.labels.database_id=\"${var.project_id}:${google_sql_database_instance.idealista_db.name}\" metric.type=\"cloudsql.googleapis.com/database/disk/utilization\""
+                      filter = "resource.type=\"cloudsql_database\" resource.labels.database_id=\"${var.project_id}:${google_sql_database_instance.ideailista_db.name}\" metric.type=\"cloudsql.googleapis.com/database/disk/utilization\""
                       aggregation = {
                         alignmentPeriod  = "3600s"
                         perSeriesAligner = "ALIGN_MEAN"
@@ -162,7 +162,7 @@ resource "google_monitoring_dashboard" "ideailista_dashboard" {
                 {
                   timeSeriesQuery = {
                     timeSeriesFilter = {
-                      filter = "resource.type=\"cloudsql_database\" resource.labels.database_id=\"${var.project_id}:${google_sql_database_instance.idealista_db.name}\" metric.type=\"cloudsql.googleapis.com/database/postgresql/num_backends\""
+                      filter = "resource.type=\"cloudsql_database\" resource.labels.database_id=\"${var.project_id}:${google_sql_database_instance.ideailista_db.name}\" metric.type=\"cloudsql.googleapis.com/database/postgresql/num_backends\""
                       aggregation = {
                         alignmentPeriod  = "3600s"
                         perSeriesAligner = "ALIGN_MEAN"
@@ -394,7 +394,7 @@ resource "google_monitoring_alert_policy" "cloud_sql_disk_alert" {
     display_name = "Disk Utilization Above 80%"
 
     condition_threshold {
-      filter          = "resource.type=\"cloudsql_database\" AND resource.labels.database_id=\"${var.project_id}:${google_sql_database_instance.idealista_db.name}\" AND metric.type=\"cloudsql.googleapis.com/database/disk/utilization\""
+      filter          = "resource.type=\"cloudsql_database\" AND resource.labels.database_id=\"${var.project_id}:${google_sql_database_instance.ideailista_db.name}\" AND metric.type=\"cloudsql.googleapis.com/database/disk/utilization\""
       duration        = "300s"
       comparison      = "COMPARISON_GT"
       threshold_value = 0.8
@@ -421,6 +421,6 @@ resource "google_monitoring_alert_policy" "cloud_sql_disk_alert" {
 
   depends_on = [
     google_project_service.required_apis,
-    google_sql_database_instance.idealista_db
+    google_sql_database_instance.ideailista_db
   ]
 }

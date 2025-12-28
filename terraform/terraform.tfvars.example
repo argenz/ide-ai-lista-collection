@@ -16,7 +16,6 @@ project_id = "your-gcp-project-id"
 region = "europe-west1"
 
 # Idealista API Credentials
-# Obtain from: https://developers.idealista.com/access-request
 idealista_api_key    = "your-idealista-api-key"
 idealista_api_secret = "your-idealista-api-secret"
 
@@ -38,7 +37,7 @@ target_country = "es"
 # Docker Image
 # Format: gcr.io/PROJECT_ID/IMAGE_NAME:TAG
 # You'll push this image after building locally
-docker_image = "gcr.io/your-gcp-project-id/ideailista-collector:latest"
+docker_image = "gcr.io/your-gcp-project-id/idealista-collector:latest"
 
 # ===================================
 # Optional Variables (with defaults)
@@ -72,16 +71,3 @@ docker_image = "gcr.io/your-gcp-project-id/ideailista-collector:latest"
 # Default: "512Mi"
 # daily_job_memory = "512Mi"
 
-# ===================================
-# Notes
-# ===================================
-
-# 1. NEVER commit terraform.tfvars to git (it's in .gitignore)
-# 2. Store sensitive values in a secure password manager
-# 3. For production, consider using GCP Secret Manager for all secrets
-# 4. Estimated monthly cost with defaults: ~$10-15 USD
-#    - Cloud SQL db-f1-micro: ~$7-10
-#    - Cloud Storage: ~$0.50-2
-#    - Cloud Run Jobs: ~$0.10-1
-#    - VPC Connector: ~$2
-# 5. Monitor costs in GCP Console: https://console.cloud.google.com/billing

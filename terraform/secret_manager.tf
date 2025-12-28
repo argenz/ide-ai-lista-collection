@@ -62,7 +62,7 @@ resource "google_secret_manager_secret" "database_url" {
 resource "google_secret_manager_secret_version" "database_url" {
   secret = google_secret_manager_secret.database_url.id
   # Connection string for Cloud SQL via private IP
-  secret_data = "postgresql://appuser:${var.db_password}@${google_sql_database_instance.idealista_db.private_ip_address}:5432/ideailista-db"
+  secret_data = "postgresql://appuser:${var.db_password}@${google_sql_database_instance.ideailista_db.private_ip_address}:5432/ideailista-db"
 
-  depends_on = [google_sql_database_instance.idealista_db]
+  depends_on = [google_sql_database_instance.ideailista_db]
 }

@@ -1,6 +1,6 @@
 # GCS bucket for raw data storage
 resource "google_storage_bucket" "data_bucket" {
-  name     = "ideailista-${var.target_location_id}-${var.project_id}"
+  name     = "ideailista-${lower(var.target_location_id)}-${var.project_id}"
   location = var.bucket_location
   project  = var.project_id
 

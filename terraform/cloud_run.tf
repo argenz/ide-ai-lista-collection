@@ -87,6 +87,8 @@ resource "google_cloud_run_v2_job" "daily_new_listings" {
       }
 
       # VPC Access for Cloud SQL connection
+      # Use PRIVATE_RANGES_ONLY so Cloud SQL (private IP) goes through VPC,
+      # but external APIs (api.idealista.com) go directly to internet
       vpc_access {
         connector = google_vpc_access_connector.connector.id
         egress    = "PRIVATE_RANGES_ONLY"

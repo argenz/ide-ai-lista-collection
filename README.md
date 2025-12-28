@@ -157,19 +157,54 @@ terraform apply
 
 ### Deploy Application
 
-```bash
-# Build Docker image
-docker build -t gcr.io/YOUR_PROJECT_ID/idealista-collector:latest .
+#### Option 1: Automatic Deployment via GitHub Actions (Recommended)
 
-# Authenticate with Google Container Registry
+Push to `main` branch triggers automatic deployment. Setup required secrets in GitHub:
+
+1. Go to **Settings → Secrets and variables → Actions**
+2. Add the following secrets:
+   - `GCP_PROJECT_ID`: Your Google Cloud project ID
+   - `GCP_SA_KEY`: Service account JSON key with permissions:
+     - Cloud Run Admin
+     - Storage Admin
+     - Service Account User
+
+#### Option 2: Manual Deployment to Cloud Run
+
+```bash
+# Set your project ID
+export PROJECT_ID=your-gcp-project-id
+
+# Authenticate with Google Cloud
+gcloud auth login
+gcloud config set project $PROJECT_ID
 gcloud auth configure-docker
 
-# Push image
-docker push gcr.io/YOUR_PROJECT_ID/idealista-collector:latest
+# Build for Cloud Run (linux/amd64 required)
+docker build --platform=linux/amd64 -t gcr.io/$PROJECT_ID/idealista-collector:latest .
 
-# The Cloud Scheduler will automatically trigger the job on schedule
-# Or trigger manually:
+# Push to Google Container Registry
+docker push gcr.io/$PROJECT_ID/idealista-collector:latest
+
+# Update the Cloud Run job with new image
+gcloud run jobs update daily-new-listings \
+  --image=gcr.io/$PROJECT_ID/idealista-collector:latest \
+  --region=europe-west1
+
+# Trigger the job manually (optional)
 gcloud run jobs execute daily-new-listings --region=europe-west1
+```
+
+#### Local Development with Docker
+
+For local testing, Docker builds natively for your architecture (faster on Apple Silicon):
+
+```bash
+# Build for local development (no platform flag needed)
+docker build -t idealista-collector .
+
+# Run with local environment
+docker-compose up app
 ```
 
 ## Monitoring

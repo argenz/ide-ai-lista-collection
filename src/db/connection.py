@@ -1,9 +1,10 @@
 """Database connection management."""
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, inspect
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import NullPool, QueuePool
 import structlog
+import os
 
 from src.config import settings
 
@@ -18,6 +19,7 @@ class DatabaseConnection:
         self.engine = None
         self.SessionLocal = None
         self._init_engine()
+        self._init_schema()
 
     def _init_engine(self):
         """Create SQLAlchemy engine with appropriate configuration."""
@@ -54,6 +56,44 @@ class DatabaseConnection:
         )
 
         logger.info("Database engine initialized", database_url=database_url.split("@")[-1])
+
+    def _init_schema(self):
+        """Initialize database schema if tables don't exist."""
+        try:
+            # Check if main tables exist
+            inspector = inspect(self.engine)
+            existing_tables = inspector.get_table_names()
+
+            required_tables = ['listings', 'listing_details', 'listing_images', 'api_requests']
+            missing_tables = [table for table in required_tables if table not in existing_tables]
+
+            if missing_tables:
+                logger.info("Tables missing, creating schema", missing_tables=missing_tables)
+
+                # Get path to schema.sql
+                schema_path = os.path.join(os.path.dirname(__file__), 'schema.sql')
+
+                if os.path.exists(schema_path):
+                    with open(schema_path, 'r') as f:
+                        schema_sql = f.read()
+
+                    # Execute schema creation
+                    with self.engine.begin() as connection:
+                        # Split by semicolon and execute each statement
+                        statements = [stmt.strip() for stmt in schema_sql.split(';') if stmt.strip()]
+                        for statement in statements:
+                            connection.execute(text(statement))
+
+                    logger.info("Database schema created successfully")
+                else:
+                    logger.warning("schema.sql not found", path=schema_path)
+            else:
+                logger.info("All required tables exist")
+
+        except Exception as e:
+            logger.error("Failed to initialize schema", error=str(e), exc_info=True)
+            # Don't fail on schema init - let the app try to proceed
+            # This allows manual schema creation if needed
 
     def get_session(self) -> Session:
         """
