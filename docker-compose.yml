@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: idealista-postgres
+    environment:
+      POSTGRES_DB: ideailista-db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./src/db/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    container_name: idealista-collector
+    environment:
+      # Database
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/ideailista-db
+
+      # Idealista API (loaded from .env file)
+      IDEALISTA_API_KEY: ${IDEALISTA_API_KEY}
+      IDEALISTA_API_SECRET: ${IDEALISTA_API_SECRET}
+
+      # Collection settings
+      TARGET_LOCATION_ID: 0-EU-ES-28
+      TARGET_COUNTRY: es
+
+      # Job configuration
+      JOB_TYPE: daily_new_listings
+
+      # GCS (not used in local dev, but required by config)
+      GCS_BUCKET_NAME: local-dev-bucket
+      GOOGLE_CLOUD_PROJECT: local-dev-project
+
+      # Logging
+      LOG_LEVEL: INFO
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      # Mount source code for development (optional - remove in production)
+      - ./src:/app/src
+      # Mount raw_responses directory to persist locally
+      - ./raw_responses:/app/raw_responses
+    env_file:
+      - .env
+
+volumes:
+  postgres_data:
+    driver: local
