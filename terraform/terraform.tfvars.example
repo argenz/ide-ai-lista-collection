@@ -1,0 +1,87 @@
+# Terraform Variables Configuration
+# Copy this file to terraform.tfvars and fill in your actual values
+# cp terraform.tfvars.example terraform.tfvars
+
+# ===================================
+# Required Variables
+# ===================================
+
+# GCP Project ID
+# Find this in GCP Console: https://console.cloud.google.com
+project_id = "your-gcp-project-id"
+
+# GCP Region (default: europe-west1)
+# Options: europe-west1, us-central1, asia-southeast1, etc.
+# See: https://cloud.google.com/compute/docs/regions-zones
+region = "europe-west1"
+
+# Idealista API Credentials
+# Obtain from: https://developers.idealista.com/access-request
+idealista_api_key    = "your-idealista-api-key"
+idealista_api_secret = "your-idealista-api-secret"
+
+# Cloud SQL Database Password
+# Choose a strong password (min 16 characters recommended)
+db_password = "your-strong-database-password-here"
+
+# Target Location ID for Idealista API
+# Madrid: 0-EU-ES-28
+# Barcelona: 0-EU-ES-08
+# Valencia: 0-EU-ES-46
+# See Idealista API docs for full list
+target_location_id = "0-EU-ES-28"
+
+# Target Country Code
+# Spain: es, Italy: it, Portugal: pt
+target_country = "es"
+
+# Docker Image
+# Format: gcr.io/PROJECT_ID/IMAGE_NAME:TAG
+# You'll push this image after building locally
+docker_image = "gcr.io/your-gcp-project-id/ideailista-collector:latest"
+
+# ===================================
+# Optional Variables (with defaults)
+# ===================================
+
+# GCS Bucket Location
+# Options: EU, US, ASIA, or specific region
+# Default: EU
+# bucket_location = "EU"
+
+# Daily Job Schedule (cron format)
+# Default: "0 2 * * *" (2 AM UTC daily)
+# Examples:
+#   - "0 2 * * *"   # Daily at 2 AM UTC
+#   - "0 */6 * * *" # Every 6 hours
+#   - "0 3 * * 1"   # Weekly on Monday at 3 AM UTC
+# daily_job_schedule = "0 2 * * *"
+
+# Daily Job Timeout (seconds)
+# Default: 600 (10 minutes)
+# Increase if collecting large datasets
+# daily_job_timeout = 600
+
+# Daily Job CPU Allocation
+# Options: "1", "2", "4"
+# Default: "1"
+# daily_job_cpu = "1"
+
+# Daily Job Memory Allocation
+# Options: "256Mi", "512Mi", "1Gi", "2Gi", "4Gi"
+# Default: "512Mi"
+# daily_job_memory = "512Mi"
+
+# ===================================
+# Notes
+# ===================================
+
+# 1. NEVER commit terraform.tfvars to git (it's in .gitignore)
+# 2. Store sensitive values in a secure password manager
+# 3. For production, consider using GCP Secret Manager for all secrets
+# 4. Estimated monthly cost with defaults: ~$10-15 USD
+#    - Cloud SQL db-f1-micro: ~$7-10
+#    - Cloud Storage: ~$0.50-2
+#    - Cloud Run Jobs: ~$0.10-1
+#    - VPC Connector: ~$2
+# 5. Monitor costs in GCP Console: https://console.cloud.google.com/billing

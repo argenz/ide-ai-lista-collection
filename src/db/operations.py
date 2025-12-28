@@ -379,12 +379,12 @@ def get_api_usage_stats(
     )
 
     # Monthly quota calculation (excluding OAuth requests)
-    # Assuming 2000 requests/month quota
+    # Assuming 100 requests/month quota
     search_requests = query.filter(
         ApiRequest.request_type != 'oauth_token'
     ).count()
 
-    quota_limit = 2000
+    quota_limit = 100
     quota_remaining = quota_limit - search_requests
 
     return {

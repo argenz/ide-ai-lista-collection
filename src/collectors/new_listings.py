@@ -1,7 +1,7 @@
 """Daily new listings collector job."""
 
 from datetime import datetime, date
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import json
 import os
 
@@ -13,6 +13,18 @@ from src.db.operations import upsert_listing, get_statistics
 from src.config import settings
 
 logger = structlog.get_logger()
+
+# Import GCS client if available
+_gcs_client = None
+try:
+    from src.storage.gcs import get_gcs_client
+    if os.getenv("GCS_BUCKET_NAME"):
+        _gcs_client = get_gcs_client()
+        logger.info("gcs_storage_enabled", bucket=os.getenv("GCS_BUCKET_NAME"))
+    else:
+        logger.info("local_storage_enabled", reason="GCS_BUCKET_NAME not set")
+except ImportError:
+    logger.info("local_storage_enabled", reason="google-cloud-storage not installed")
 
 
 def save_raw_response_local(date_str: str, page_num: int, data: Dict[str, Any]):
@@ -54,6 +66,45 @@ def save_metadata_local(date_str: str, metadata: Dict[str, Any]):
         json.dump(metadata, f, indent=2)
 
     logger.info("metadata_saved", filename=filename)
+
+
+def save_raw_response(date_str: str, page_num: int, data: Dict[str, Any], job_type: str = "new_listings"):
+    """
+    Save raw API response (GCS in cloud, local file in dev).
+
+    Args:
+        date_str: Date string (YYYY-MM-DD)
+        page_num: Page number
+        data: API response data
+        job_type: Type of collection job
+    """
+    collection_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+
+    if _gcs_client:
+        # Use GCS in production
+        _gcs_client.upload_raw_response(collection_date, page_num, data, job_type)
+    else:
+        # Use local storage in development
+        save_raw_response_local(date_str, page_num, data)
+
+
+def save_metadata(date_str: str, metadata: Dict[str, Any], job_type: str = "new_listings"):
+    """
+    Save job metadata (GCS in cloud, local file in dev).
+
+    Args:
+        date_str: Date string (YYYY-MM-DD)
+        metadata: Metadata dictionary
+        job_type: Type of collection job
+    """
+    collection_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+
+    if _gcs_client:
+        # Use GCS in production
+        _gcs_client.upload_metadata(collection_date, metadata, job_type)
+    else:
+        # Use local storage in development
+        save_metadata_local(date_str, metadata)
 
 
 def process_listing(session, property_data: Dict[str, Any]) -> str:
@@ -170,8 +221,8 @@ def run_daily_job():
             order="publicationDate",
             sort="desc"
         ):
-            # Save raw response (local for now, GCS in Phase 3)
-            save_raw_response_local(date_str, page_num, page_data)
+            # Save raw response (GCS in cloud, local in dev)
+            save_raw_response(date_str, page_num, page_data, "new_listings")
 
             # Process page and update database
             page_stats = process_page(session, page_num, page_data)
@@ -206,7 +257,7 @@ def run_daily_job():
             "database_stats": db_stats
         }
 
-        save_metadata_local(date_str, metadata)
+        save_metadata(date_str, metadata, "new_listings")
 
         logger.info(
             "daily_job_completed",
