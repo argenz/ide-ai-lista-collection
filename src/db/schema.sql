@@ -13,6 +13,7 @@ CREATE TABLE listings (
     property_code VARCHAR(20) PRIMARY KEY,
     first_seen_at TIMESTAMP NOT NULL DEFAULT NOW(),
     last_seen_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    -- TODO: Remove publication_date - API doesn't provide this value, first_seen_at serves this purpose
     publication_date DATE,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     sold_or_withdrawn_at DATE,
@@ -46,6 +47,7 @@ CREATE TABLE listing_images (
 -- Indices for performance
 CREATE INDEX idx_listings_is_active ON listings(is_active);
 CREATE INDEX idx_listings_last_seen_at ON listings(last_seen_at);
+-- TODO: Remove this index when publication_date field is removed
 CREATE INDEX idx_listings_publication_date ON listings(publication_date);
 CREATE INDEX idx_listing_details_price ON listing_details(price);
 CREATE INDEX idx_listing_images_property_code ON listing_images(property_code);

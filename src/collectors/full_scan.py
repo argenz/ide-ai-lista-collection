@@ -1,15 +1,14 @@
-"""Daily new listings collector job."""
+"""Weekly full scan collector job."""
 
 from datetime import datetime, date
-from typing import Dict, Any, Optional
-import json
+from typing import Dict, Any
 import os
 
 import structlog
 
 from src.api.client import IdealistaClient
 from src.db.connection import db
-from src.db.operations import upsert_listing, get_statistics
+from src.db.operations import upsert_listing, mark_as_inactive, get_statistics
 from src.config import settings
 
 logger = structlog.get_logger()
@@ -31,48 +30,7 @@ except ImportError:
     logger.info("local_storage_enabled", reason="google-cloud-storage not installed")
 
 
-def save_raw_response_local(date_str: str, page_num: int, data: Dict[str, Any]):
-    """
-    Save raw API response to local file (for local development).
-
-    In production, this will be replaced with GCS upload.
-
-    Args:
-        date_str: Date string (YYYY-MM-DD)
-        page_num: Page number
-        data: API response data
-    """
-    output_dir = f"raw_responses/{date_str}"
-    os.makedirs(output_dir, exist_ok=True)
-
-    filename = f"{output_dir}/new_listings_p{page_num}.json"
-
-    with open(filename, 'w') as f:
-        json.dump(data, f, indent=2)
-
-    logger.info("raw_response_saved", filename=filename)
-
-
-def save_metadata_local(date_str: str, metadata: Dict[str, Any]):
-    """
-    Save job metadata to local file.
-
-    Args:
-        date_str: Date string (YYYY-MM-DD)
-        metadata: Metadata dictionary
-    """
-    output_dir = f"raw_responses/{date_str}"
-    os.makedirs(output_dir, exist_ok=True)
-
-    filename = f"{output_dir}/_meta.json"
-
-    with open(filename, 'w') as f:
-        json.dump(metadata, f, indent=2)
-
-    logger.info("metadata_saved", filename=filename)
-
-
-def save_raw_response(date_str: str, page_num: int, data: Dict[str, Any], job_type: str = "new_listings"):
+def save_raw_response(date_str: str, page_num: int, data: Dict[str, Any]):
     """
     Save raw API response (GCS in cloud, local file in dev).
 
@@ -80,40 +38,32 @@ def save_raw_response(date_str: str, page_num: int, data: Dict[str, Any], job_ty
         date_str: Date string (YYYY-MM-DD)
         page_num: Page number
         data: API response data
-        job_type: Type of collection job
     """
-    collection_date = datetime.strptime(date_str, "%Y-%m-%d").date()
-
-    if _gcs_client:
-        # Use GCS in production
-        _gcs_client.upload_raw_response(collection_date, page_num, data, job_type)
-    else:
-        # Use local storage in development
-        save_raw_response_local(date_str, page_num, data)
+    from src.collectors.new_listings import save_raw_response as _save
+    _save(date_str, page_num, data, job_type="full_scan")
 
 
-def save_metadata(date_str: str, metadata: Dict[str, Any], job_type: str = "new_listings"):
+def save_metadata(date_str: str, metadata: Dict[str, Any]):
     """
     Save job metadata (GCS in cloud, local file in dev).
 
     Args:
         date_str: Date string (YYYY-MM-DD)
         metadata: Metadata dictionary
-        job_type: Type of collection job
     """
-    collection_date = datetime.strptime(date_str, "%Y-%m-%d").date()
-
-    if _gcs_client:
-        # Use GCS in production
-        _gcs_client.upload_metadata(collection_date, metadata, job_type)
-    else:
-        # Use local storage in development
-        save_metadata_local(date_str, metadata)
+    from src.collectors.new_listings import save_metadata as _save_meta
+    _save_meta(date_str, metadata, job_type="full_scan")
 
 
 def process_listing(session, property_data: Dict[str, Any]) -> str:
     """
     Process a single listing from API response.
+
+    Uses the same logic as daily job:
+    - New listing → insert both tables
+    - Price change → update previous_prices JSONB
+    - Republished → set is_active=True, republished=True
+    - Active (no change) → update last_seen_at
 
     Args:
         session: Database session
@@ -181,17 +131,32 @@ def process_page(session, page_num: int, page_data: Dict[str, Any]) -> Dict[str,
     return stats
 
 
-def run_daily_job():
+def run_weekly_scan():
     """
-    Run the daily new listings collection job.
+    Run the weekly full scan job.
 
-    Fetches listings published in the last 2 days and stores them in the database.
+    Scans all active listings to:
+    - Track price changes
+    - Detect republished listings
+    - Mark sold or withdrawn properties as inactive
+
+    Key differences from daily job:
+    - No sinceDate filter (scans all active listings)
+    - Orders by price ascending
+    - Records scan_start_timestamp
+    - Deactivates listings not seen in this scan
     """
-    start_time = datetime.utcnow()
-    job_id = f"daily-{start_time.strftime('%Y%m%d-%H%M%S')}"
-    date_str = start_time.strftime('%Y-%m-%d')
+    # Record scan start time BEFORE fetching any data
+    # This ensures we don't accidentally deactivate listings we're about to process
+    scan_start_timestamp = datetime.utcnow()
+    job_id = f"weekly-{scan_start_timestamp.strftime('%Y%m%d-%H%M%S')}"
+    date_str = scan_start_timestamp.strftime('%Y-%m-%d')
 
-    logger.info("daily_job_started", job_id=job_id, start_time=start_time.isoformat())
+    logger.info(
+        "weekly_scan_started",
+        job_id=job_id,
+        scan_start=scan_start_timestamp.isoformat()
+    )
 
     # Initialize API client with job_id for request tracking
     client = IdealistaClient(job_id=job_id)
@@ -217,17 +182,20 @@ def run_daily_job():
         total_pages = 0
         total_properties = 0
 
-        # Fetch all pages with sinceDate=Y (last 2 days)
+        # Fetch all pages WITHOUT sinceDate (full scan)
+        # Order by price ascending for consistent pagination
+        logger.info("Starting full pagination of all active listings")
+
         for page_num, page_data in client.search_all_pages(
             operation="sale",
             property_type="homes",
-            since_date="Y",  # Last 2 days
+            since_date=None,  # No date filter - scan ALL listings
             max_items=50,
-            order="publicationDate",
-            sort="desc"
+            order="price",  # Order by price for consistent results
+            sort="asc"  # Ascending order
         ):
             # Save raw response (GCS in cloud, local in dev)
-            save_raw_response(date_str, page_num, page_data, "new_listings")
+            save_raw_response(date_str, page_num, page_data)
 
             # Process page and update database
             page_stats = process_page(session, page_num, page_data)
@@ -243,39 +211,58 @@ def run_daily_job():
             session.commit()
             logger.info("page_committed", page=page_num)
 
-        # Get database statistics
+        logger.info(
+            "pagination_complete",
+            total_pages=total_pages,
+            total_properties=total_properties
+        )
+
+        # CRITICAL: Mark listings as inactive if they weren't seen in this scan
+        # Any listing with last_seen_at < scan_start_timestamp is no longer active
+        deactivated_count = mark_as_inactive(session, scan_start_timestamp)
+        session.commit()
+
+        logger.info(
+            "deactivation_complete",
+            deactivated_count=deactivated_count
+        )
+
+        # Get final database statistics
         db_stats = get_statistics(session)
 
         # Job completion
         end_time = datetime.utcnow()
-        duration_seconds = (end_time - start_time).total_seconds()
+        duration_seconds = (end_time - scan_start_timestamp).total_seconds()
 
         metadata = {
             "job_id": job_id,
-            "job_type": "daily_new_listings",
-            "start_time": start_time.isoformat(),
+            "job_type": "weekly_full_scan",
+            "scan_start_timestamp": scan_start_timestamp.isoformat(),
+            "start_time": scan_start_timestamp.isoformat(),
             "end_time": end_time.isoformat(),
             "duration_seconds": duration_seconds,
             "total_pages": total_pages,
             "total_properties": total_properties,
             "actions": total_stats,
+            "deactivated_count": deactivated_count,
             "database_stats": db_stats
         }
 
-        save_metadata(date_str, metadata, "new_listings")
+        save_metadata(date_str, metadata)
 
         logger.info(
-            "daily_job_completed",
+            "weekly_scan_completed",
             job_id=job_id,
             duration_seconds=duration_seconds,
             total_pages=total_pages,
             total_properties=total_properties,
             actions=total_stats,
+            deactivated_count=deactivated_count,
             database_stats=db_stats
         )
 
     except Exception as e:
-        logger.error("daily_job_failed", job_id=job_id, error=str(e), exc_info=True)
+        logger.error("weekly_scan_failed", job_id=job_id, error=str(e), exc_info=True)
         session.rollback()
         raise
 
@@ -286,6 +273,7 @@ def run_daily_job():
 
 if __name__ == "__main__":
     # Configure structured logging for standalone execution
+    import structlog
     structlog.configure(
         processors=[
             structlog.processors.TimeStamper(fmt="iso"),
@@ -293,4 +281,4 @@ if __name__ == "__main__":
         ]
     )
 
-    run_daily_job()
+    run_weekly_scan()

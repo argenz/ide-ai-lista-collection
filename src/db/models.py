@@ -24,6 +24,8 @@ class Listing(Base):
     property_code = Column(String(20), primary_key=True, index=True)
     first_seen_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     last_seen_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    # TODO: Remove publication_date field - Idealista API doesn't provide this value
+    # and first_seen_at serves the same purpose for our use case
     publication_date = Column(Date, nullable=True, index=True)
     is_active = Column(Boolean, nullable=False, default=True, index=True)
     sold_or_withdrawn_at = Column(Date, nullable=True)

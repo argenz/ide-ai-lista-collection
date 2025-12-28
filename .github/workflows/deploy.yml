@@ -41,8 +41,14 @@ jobs:
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.IMAGE_NAME }}:latest
 
-      - name: Update Cloud Run Job
+      - name: Update Cloud Run Jobs
         run: |
+          # Update daily new listings job
           gcloud run jobs update daily-new-listings \
+            --image=gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            --region=${{ env.GCP_REGION }}
+
+          # Update weekly full scan job
+          gcloud run jobs update weekly-full-scan \
             --image=gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
             --region=${{ env.GCP_REGION }}

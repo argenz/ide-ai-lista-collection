@@ -99,6 +99,12 @@ Stores property data and price history.
    docker-compose up app
    ```
 
+   Make sure to specify which job you want to run in the docker-compose.yml
+   ```
+   # Job configuration
+   JOB_TYPE: weekly_full_scan  # Change to daily_new_listings for daily job
+   ```
+
 4. **Verify data:**
    ```bash
    docker-compose exec postgres psql -U postgres -d ideailista-db -c "SELECT COUNT(*) FROM listings;"

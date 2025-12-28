@@ -40,9 +40,8 @@ def main():
             run_daily_job()
 
         elif job_type == "weekly_full_scan":
-            # To be implemented in Phase 5.1
-            logger.error("weekly_full_scan not yet implemented")
-            sys.exit(1)
+            from src.collectors.full_scan import run_weekly_scan
+            run_weekly_scan()
 
         elif job_type == "image_scraper":
             # To be implemented in Phase 5.2
