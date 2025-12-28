@@ -1,18 +1,14 @@
-# Idealista Data Collection System
+# IdeAIlista Data Collection System
 
-A data collection system that gathers residential property listings from the Idealista API to train a price prediction ML model. The system runs on Google Cloud Platform, collecting daily new listings and performing weekly full scans to track price changes and property lifecycle.
+A data collection system that gathers residential property listings from the Idealista API to train ideAIlista. The system runs on Google Cloud Platform, collecting daily new listings and performing weekly full scans to track price changes and property lifecycle.
 
-**Target:** Madrid, Spain (`locationId: 0-EU-ES-28`)
+**Target:** Madrid, Spain
 
 ## Features
 
 - Daily collection of new property listings
 - Price change tracking with historical data
-- Property lifecycle management (active/inactive/republished)
-- Raw data backup to Google Cloud Storage
-- Structured logging for monitoring
-- Retry logic and rate limiting for API calls
-- Local development environment with Docker
+- Listing lifecycle tracking (active/inactive/republished)
 
 ## Architecture
 
@@ -60,6 +56,29 @@ idealista-collector/
 └── README.md
 ```
 
+## Database Schema
+
+### `listings` Table
+Tracks property lifecycle and activity status.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `property_code` | VARCHAR(20) | Idealista property ID (PK) |
+| `first_seen_at` | TIMESTAMP | First capture timestamp |
+| `last_seen_at` | TIMESTAMP | Most recent appearance |
+| `is_active` | BOOLEAN | Currently listed |
+| `republished` | BOOLEAN | Reappeared after deactivation |
+
+### `listing_details` Table
+Stores property data and price history.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `property_code` | VARCHAR(20) | Foreign key to listings |
+| `price` | INTEGER | Current price (€) |
+| `previous_prices` | JSONB | Historical prices |
+| `all_fields_json` | JSONB | Complete API response |
+
 ## Local Development Setup
 
 ### Quick Start
@@ -91,29 +110,6 @@ idealista-collector/
 # Test API connectivity without running full job
 python src/api/client.py
 ```
-
-## Database Schema
-
-### `listings` Table
-Tracks property lifecycle and activity status.
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `property_code` | VARCHAR(20) | Idealista property ID (PK) |
-| `first_seen_at` | TIMESTAMP | First capture timestamp |
-| `last_seen_at` | TIMESTAMP | Most recent appearance |
-| `is_active` | BOOLEAN | Currently listed |
-| `republished` | BOOLEAN | Reappeared after deactivation |
-
-### `listing_details` Table
-Stores property data and price history.
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `property_code` | VARCHAR(20) | Foreign key to listings |
-| `price` | INTEGER | Current price (€) |
-| `previous_prices` | JSONB | Historical prices |
-| `all_fields_json` | JSONB | Complete API response |
 
 ## GCP Deployment
 
@@ -157,7 +153,7 @@ terraform apply
 
 ### Deploy Application
 
-#### Option 1: Automatic Deployment via GitHub Actions (Recommended)
+#### Option 1: Automatic Deployment via GitHub Actions 
 
 Push to `main` branch triggers automatic deployment. Setup required secrets in GitHub:
 
@@ -195,21 +191,9 @@ gcloud run jobs update daily-new-listings \
 gcloud run jobs execute daily-new-listings --region=europe-west1
 ```
 
-#### Local Development with Docker
-
-For local testing, Docker builds natively for your architecture (faster on Apple Silicon):
-
-```bash
-# Build for local development (no platform flag needed)
-docker build -t idealista-collector .
-
-# Run with local environment
-docker-compose up app
-```
-
 ## Monitoring
 
-### View Logs
+### View GCP Logs
 
 ```bash
 # Cloud Run job logs
@@ -251,7 +235,6 @@ All configuration is managed through environment variables:
 | `IDEALISTA_API_KEY` | Idealista API key | Yes |
 | `IDEALISTA_API_SECRET` | Idealista API secret | Yes |
 | `DATABASE_URL` | PostgreSQL connection string | Yes |
-| `GCS_BUCKET_NAME` | GCS bucket for raw data | Yes (cloud) |
 | `TARGET_LOCATION_ID` | Madrid location ID | No (default: 0-EU-ES-28) |
 | `JOB_TYPE` | Job to run | No (default: daily_new_listings) |
 
@@ -265,55 +248,4 @@ Monthly costs for GCP deployment:
 | Cloud Storage (5-10GB) | $0.10-0.20 |
 | Cloud Run Jobs | $1-2 |
 | **Total** | **~$10-15/month** |
-
-## Troubleshooting
-
-### Database Connection Issues
-
-```bash
-# Check database is running
-docker-compose ps postgres
-
-# Restart database
-docker-compose restart postgres
-
-# View database logs
-docker-compose logs postgres
-```
-
-### API Authentication Errors
-
-- Verify credentials in `.env` file
-- Ensure credentials are not expired
-
-### Rate Limiting
-
-The client implements automatic retry with exponential backoff. If you encounter persistent rate limiting:
-- Reduce collection frequency
-- Request higher API quota from Idealista
-
-## Development
-
-### Running Tests
-
-```bash
-# Install development dependencies
-pip install -r requirements.txt
-
-# Run tests
-pytest tests/
-
-# Run with coverage
-pytest --cov=src tests/
-```
-
-### Code Style
-
-```bash
-# Format code
-black src/
-
-# Lint code
-pylint src/
-```
 
