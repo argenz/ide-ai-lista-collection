@@ -91,3 +91,28 @@ variable "daily_job_cpu" {
   type        = string
   default     = "1"
 }
+
+# Weekly Full Scan Job Variables
+variable "weekly_job_schedule" {
+  description = "Cron schedule for weekly full scan job (UTC)"
+  type        = string
+  default     = "0 3 * * 0" # Sunday at 3 AM UTC
+}
+
+variable "weekly_job_timeout" {
+  description = "Timeout for weekly scan job in seconds"
+  type        = number
+  default     = 3600 # 60 minutes
+}
+
+variable "weekly_job_memory" {
+  description = "Memory limit for weekly scan job"
+  type        = string
+  default     = "1Gi"
+}
+
+variable "weekly_job_cpu" {
+  description = "CPU limit for weekly scan job"
+  type        = string
+  default     = "1"
+}

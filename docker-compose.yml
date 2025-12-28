@@ -35,9 +35,9 @@ services:
       TARGET_COUNTRY: es
 
       # Job configuration
-      JOB_TYPE: daily_new_listings
+      JOB_TYPE: weekly_full_scan  # Change to daily_new_listings for daily job
 
-      # GCS (not used in local dev, but required by config)
+      # GCS (will fall back to local file storage if no credentials available)
       GCS_BUCKET_NAME: local-dev-bucket
       GOOGLE_CLOUD_PROJECT: local-dev-project
 

@@ -111,3 +111,117 @@ resource "google_cloud_run_v2_job" "daily_new_listings" {
     google_secret_manager_secret_version.database_url
   ]
 }
+
+# Cloud Run Job for weekly full scan collection
+resource "google_cloud_run_v2_job" "weekly_full_scan" {
+  name     = "weekly-full-scan"
+  location = var.region
+  project  = var.project_id
+
+  template {
+    template {
+      service_account = google_service_account.cloud_run_sa.email
+
+      timeout = "${var.weekly_job_timeout}s"
+
+      max_retries = 3
+
+      containers {
+        image = var.docker_image
+
+        # Environment variables
+        env {
+          name  = "JOB_TYPE"
+          value = "weekly_full_scan"
+        }
+
+        env {
+          name  = "TARGET_LOCATION_ID"
+          value = var.target_location_id
+        }
+
+        env {
+          name  = "TARGET_COUNTRY"
+          value = var.target_country
+        }
+
+        env {
+          name  = "GCS_BUCKET_NAME"
+          value = google_storage_bucket.data_bucket.name
+        }
+
+        env {
+          name  = "GOOGLE_CLOUD_PROJECT"
+          value = var.project_id
+        }
+
+        env {
+          name  = "LOG_LEVEL"
+          value = "INFO"
+        }
+
+        # Secrets from Secret Manager
+        env {
+          name = "IDEALISTA_API_KEY"
+          value_source {
+            secret_key_ref {
+              secret  = google_secret_manager_secret.api_key.secret_id
+              version = "latest"
+            }
+          }
+        }
+
+        env {
+          name = "IDEALISTA_API_SECRET"
+          value_source {
+            secret_key_ref {
+              secret  = google_secret_manager_secret.api_secret.secret_id
+              version = "latest"
+            }
+          }
+        }
+
+        env {
+          name = "DATABASE_URL"
+          value_source {
+            secret_key_ref {
+              secret  = google_secret_manager_secret.database_url.secret_id
+              version = "latest"
+            }
+          }
+        }
+
+        # Resource limits
+        resources {
+          limits = {
+            cpu    = var.weekly_job_cpu
+            memory = var.weekly_job_memory
+          }
+        }
+      }
+
+      # VPC Access for Cloud SQL connection
+      # Use PRIVATE_RANGES_ONLY so Cloud SQL (private IP) goes through VPC,
+      # but external APIs (api.idealista.com) go directly to internet
+      vpc_access {
+        connector = google_vpc_access_connector.connector.id
+        egress    = "PRIVATE_RANGES_ONLY"
+      }
+    }
+  }
+
+  labels = {
+    application = "ideailista-collector"
+    job_type    = "weekly-full-scan"
+    managed_by  = "terraform"
+  }
+
+  depends_on = [
+    google_project_service.required_apis,
+    google_service_account.cloud_run_sa,
+    google_vpc_access_connector.connector,
+    google_secret_manager_secret_version.api_key,
+    google_secret_manager_secret_version.api_secret,
+    google_secret_manager_secret_version.database_url
+  ]
+}
