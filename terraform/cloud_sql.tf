@@ -28,7 +28,7 @@ resource "google_sql_database_instance" "ideailista_db" {
     ip_configuration {
       ipv4_enabled    = false
       private_network = google_compute_network.vpc.id
-      require_ssl     = false # Set to true in production
+      ssl_mode        = "ALLOW_UNENCRYPTED_AND_ENCRYPTED" # Use ENCRYPTED_ONLY in production
 
       # No authorized networks needed with private IP
     }

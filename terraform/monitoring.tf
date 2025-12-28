@@ -1,4 +1,5 @@
 # Cloud Monitoring Dashboard for ideAIlista Collector
+# Simplified dashboard with GCP-provided metrics only
 resource "google_monitoring_dashboard" "ideailista_dashboard" {
   dashboard_json = jsonencode({
     displayName = "ideAIlista Data Collector Dashboard"
@@ -7,27 +8,28 @@ resource "google_monitoring_dashboard" "ideailista_dashboard" {
       tiles = [
         # Cloud Run Job Executions
         {
+          xPos   = 0
+          yPos   = 0
           width  = 6
           height = 4
           widget = {
-            title = "Cloud Run Job Executions (Last 7 Days)"
+            title = "Cloud Run Job Executions"
             xyChart = {
               dataSets = [
                 {
                   timeSeriesQuery = {
                     timeSeriesFilter = {
-                      filter = "resource.type=\"cloud_run_job\" resource.labels.job_name=\"daily-new-listings\""
+                      filter = "resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"daily-new-listings\" AND metric.type=\"run.googleapis.com/job/completed_execution_count\""
                       aggregation = {
-                        alignmentPeriod  = "86400s"
-                        perSeriesAligner = "ALIGN_SUM"
-                        crossSeriesReducer = "REDUCE_COUNT"
+                        alignmentPeriod    = "86400s"
+                        perSeriesAligner   = "ALIGN_SUM"
+                        crossSeriesReducer = "REDUCE_SUM"
                       }
                     }
                   }
                   plotType = "LINE"
                 }
               ]
-              timeshiftDuration = "0s"
               yAxis = {
                 label = "Executions"
                 scale = "LINEAR"
@@ -35,37 +37,10 @@ resource "google_monitoring_dashboard" "ideailista_dashboard" {
             }
           }
         },
-        # Cloud Run Job Duration
-        {
-          width  = 6
-          height = 4
-          widget = {
-            title = "Cloud Run Job Duration (Last 7 Days)"
-            xyChart = {
-              dataSets = [
-                {
-                  timeSeriesQuery = {
-                    timeSeriesFilter = {
-                      filter = "resource.type=\"cloud_run_job\" resource.labels.job_name=\"daily-new-listings\" metric.type=\"run.googleapis.com/job/completed_execution_count\""
-                      aggregation = {
-                        alignmentPeriod  = "86400s"
-                        perSeriesAligner = "ALIGN_DELTA"
-                      }
-                    }
-                  }
-                  plotType = "LINE"
-                }
-              ]
-              timeshiftDuration = "0s"
-              yAxis = {
-                label = "Duration (seconds)"
-                scale = "LINEAR"
-              }
-            }
-          }
-        },
         # GCS Bucket Object Count
         {
+          xPos   = 6
+          yPos   = 0
           width  = 6
           height = 4
           widget = {
@@ -75,7 +50,7 @@ resource "google_monitoring_dashboard" "ideailista_dashboard" {
                 {
                   timeSeriesQuery = {
                     timeSeriesFilter = {
-                      filter = "resource.type=\"gcs_bucket\" resource.labels.bucket_name=\"${google_storage_bucket.data_bucket.name}\" metric.type=\"storage.googleapis.com/storage/object_count\""
+                      filter = "resource.type=\"gcs_bucket\" AND resource.labels.bucket_name=\"${google_storage_bucket.data_bucket.name}\" AND metric.type=\"storage.googleapis.com/storage/object_count\""
                       aggregation = {
                         alignmentPeriod  = "3600s"
                         perSeriesAligner = "ALIGN_MEAN"
@@ -85,7 +60,6 @@ resource "google_monitoring_dashboard" "ideailista_dashboard" {
                   plotType = "LINE"
                 }
               ]
-              timeshiftDuration = "0s"
               yAxis = {
                 label = "Objects"
                 scale = "LINEAR"
@@ -95,6 +69,8 @@ resource "google_monitoring_dashboard" "ideailista_dashboard" {
         },
         # GCS Bucket Size
         {
+          xPos   = 0
+          yPos   = 4
           width  = 6
           height = 4
           widget = {
@@ -104,7 +80,7 @@ resource "google_monitoring_dashboard" "ideailista_dashboard" {
                 {
                   timeSeriesQuery = {
                     timeSeriesFilter = {
-                      filter = "resource.type=\"gcs_bucket\" resource.labels.bucket_name=\"${google_storage_bucket.data_bucket.name}\" metric.type=\"storage.googleapis.com/storage/total_bytes\""
+                      filter = "resource.type=\"gcs_bucket\" AND resource.labels.bucket_name=\"${google_storage_bucket.data_bucket.name}\" AND metric.type=\"storage.googleapis.com/storage/total_bytes\""
                       aggregation = {
                         alignmentPeriod  = "3600s"
                         perSeriesAligner = "ALIGN_MEAN"
@@ -114,7 +90,6 @@ resource "google_monitoring_dashboard" "ideailista_dashboard" {
                   plotType = "LINE"
                 }
               ]
-              timeshiftDuration = "0s"
               yAxis = {
                 label = "Bytes"
                 scale = "LINEAR"
@@ -124,6 +99,8 @@ resource "google_monitoring_dashboard" "ideailista_dashboard" {
         },
         # Cloud SQL Disk Usage
         {
+          xPos   = 6
+          yPos   = 4
           width  = 6
           height = 4
           widget = {
@@ -133,7 +110,7 @@ resource "google_monitoring_dashboard" "ideailista_dashboard" {
                 {
                   timeSeriesQuery = {
                     timeSeriesFilter = {
-                      filter = "resource.type=\"cloudsql_database\" resource.labels.database_id=\"${var.project_id}:${google_sql_database_instance.ideailista_db.name}\" metric.type=\"cloudsql.googleapis.com/database/disk/utilization\""
+                      filter = "resource.type=\"cloudsql_database\" AND resource.labels.database_id=\"${var.project_id}:${google_sql_database_instance.ideailista_db.name}\" AND metric.type=\"cloudsql.googleapis.com/database/disk/utilization\""
                       aggregation = {
                         alignmentPeriod  = "3600s"
                         perSeriesAligner = "ALIGN_MEAN"
@@ -143,7 +120,6 @@ resource "google_monitoring_dashboard" "ideailista_dashboard" {
                   plotType = "LINE"
                 }
               ]
-              timeshiftDuration = "0s"
               yAxis = {
                 label = "Utilization (0-1)"
                 scale = "LINEAR"
@@ -153,6 +129,8 @@ resource "google_monitoring_dashboard" "ideailista_dashboard" {
         },
         # Cloud SQL Connection Count
         {
+          xPos   = 0
+          yPos   = 8
           width  = 6
           height = 4
           widget = {
@@ -162,7 +140,7 @@ resource "google_monitoring_dashboard" "ideailista_dashboard" {
                 {
                   timeSeriesQuery = {
                     timeSeriesFilter = {
-                      filter = "resource.type=\"cloudsql_database\" resource.labels.database_id=\"${var.project_id}:${google_sql_database_instance.ideailista_db.name}\" metric.type=\"cloudsql.googleapis.com/database/postgresql/num_backends\""
+                      filter = "resource.type=\"cloudsql_database\" AND resource.labels.database_id=\"${var.project_id}:${google_sql_database_instance.ideailista_db.name}\" AND metric.type=\"cloudsql.googleapis.com/database/postgresql/num_backends\""
                       aggregation = {
                         alignmentPeriod  = "3600s"
                         perSeriesAligner = "ALIGN_MEAN"
@@ -172,124 +150,8 @@ resource "google_monitoring_dashboard" "ideailista_dashboard" {
                   plotType = "LINE"
                 }
               ]
-              timeshiftDuration = "0s"
               yAxis = {
                 label = "Connections"
-                scale = "LINEAR"
-              }
-            }
-          }
-        },
-        # API Request Count (Custom Metric)
-        {
-          width  = 6
-          height = 4
-          widget = {
-            title = "Idealista API Request Count (Last 30 Days)"
-            scorecard = {
-              timeSeriesQuery = {
-                timeSeriesFilter = {
-                  filter = "resource.type=\"global\" metric.type=\"custom.googleapis.com/idealista/api_requests_total\""
-                  aggregation = {
-                    alignmentPeriod  = "2592000s"
-                    perSeriesAligner = "ALIGN_SUM"
-                  }
-                }
-              }
-              sparkChartView = {
-                sparkChartType = "SPARK_BAR"
-              }
-            }
-          }
-        },
-        # API Quota Usage (Custom Metric)
-        {
-          width  = 6
-          height = 4
-          widget = {
-            title = "API Quota Usage (Monthly)"
-            scorecard = {
-              gaugeView = {
-                lowerBound = 0
-                upperBound = 100
-              }
-              timeSeriesQuery = {
-                timeSeriesFilter = {
-                  filter = "resource.type=\"global\" metric.type=\"custom.googleapis.com/idealista/api_quota_usage\""
-                  aggregation = {
-                    alignmentPeriod  = "2592000s"
-                    perSeriesAligner = "ALIGN_MAX"
-                  }
-                }
-              }
-              thresholds = [
-                {
-                  value = 80
-                  color = "YELLOW"
-                },
-                {
-                  value = 95
-                  color = "RED"
-                }
-              ]
-            }
-          }
-        },
-        # API Success Rate
-        {
-          width  = 6
-          height = 4
-          widget = {
-            title = "API Success Rate (Last 7 Days)"
-            xyChart = {
-              dataSets = [
-                {
-                  timeSeriesQuery = {
-                    timeSeriesFilter = {
-                      filter = "resource.type=\"global\" metric.type=\"custom.googleapis.com/idealista/api_success_rate\""
-                      aggregation = {
-                        alignmentPeriod  = "86400s"
-                        perSeriesAligner = "ALIGN_MEAN"
-                      }
-                    }
-                  }
-                  plotType = "LINE"
-                }
-              ]
-              timeshiftDuration = "0s"
-              yAxis = {
-                label = "Success Rate (%)"
-                scale = "LINEAR"
-              }
-            }
-          }
-        },
-        # Listings Collected (Custom Metric)
-        {
-          width  = 6
-          height = 4
-          widget = {
-            title = "New Listings Collected (Last 7 Days)"
-            xyChart = {
-              dataSets = [
-                {
-                  timeSeriesQuery = {
-                    timeSeriesFilter = {
-                      filter = "resource.type=\"global\" metric.type=\"custom.googleapis.com/idealista/listings_collected\""
-                      aggregation = {
-                        alignmentPeriod  = "86400s"
-                        perSeriesAligner = "ALIGN_SUM"
-                        crossSeriesReducer = "REDUCE_SUM"
-                        groupByFields      = ["metric.label.listing_type"]
-                      }
-                    }
-                  }
-                  plotType = "STACKED_BAR"
-                }
-              ]
-              timeshiftDuration = "0s"
-              yAxis = {
-                label = "Listings"
                 scale = "LINEAR"
               }
             }
@@ -298,45 +160,6 @@ resource "google_monitoring_dashboard" "ideailista_dashboard" {
       ]
     }
   })
-
-  project = var.project_id
-
-  depends_on = [
-    google_project_service.required_apis
-  ]
-}
-
-# Alert Policy for High API Usage
-resource "google_monitoring_alert_policy" "api_quota_alert" {
-  display_name = "ideAIlista API Quota Alert"
-  combiner     = "OR"
-
-  conditions {
-    display_name = "API Quota Above 80%"
-
-    condition_threshold {
-      filter          = "resource.type=\"global\" AND metric.type=\"custom.googleapis.com/idealista/api_quota_usage\""
-      duration        = "300s"
-      comparison      = "COMPARISON_GT"
-      threshold_value = 80
-
-      aggregations {
-        alignment_period   = "3600s"
-        per_series_aligner = "ALIGN_MAX"
-      }
-    }
-  }
-
-  notification_channels = []
-
-  alert_strategy {
-    auto_close = "86400s"
-  }
-
-  documentation {
-    content   = "API quota usage has exceeded 80% (80 out of 100 requests per month). Review usage patterns and consider optimizing collection frequency."
-    mime_type = "text/markdown"
-  }
 
   project = var.project_id
 
