@@ -1,4 +1,4 @@
-# IdeAIlista Data Collection System
+# IdeAilista Data Collection System
 
 A data collection system that gathers residential property listings from the Idealista API to train ideAIlista. The system runs on Google Cloud Platform, collecting daily new listings and performing weekly full scans to track price changes and property lifecycle.
 
