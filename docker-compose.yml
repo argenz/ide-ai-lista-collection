@@ -35,7 +35,7 @@ services:
       TARGET_COUNTRY: es
 
       # Job configuration
-      JOB_TYPE: weekly_full_scan  # Change to daily_new_listings for daily job
+      JOB_TYPE: daily_new_listings # Change to weekly_full_scan for daily job
 
       # GCS (will fall back to local file storage if no credentials available)
       GCS_BUCKET_NAME: local-dev-bucket

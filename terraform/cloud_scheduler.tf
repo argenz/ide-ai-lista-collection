@@ -35,6 +35,8 @@ resource "google_cloud_scheduler_job" "daily_trigger" {
 
 # Cloud Scheduler job to trigger weekly full scan
 resource "google_cloud_scheduler_job" "weekly_trigger" {
+  count = var.enable_weekly_job ? 1 : 0
+
   name             = "weekly-full-scan-trigger"
   description      = "Triggers weekly full scan at 3 AM UTC on Sundays"
   schedule         = var.weekly_job_schedule
@@ -55,7 +57,7 @@ resource "google_cloud_scheduler_job" "weekly_trigger" {
 
   http_target {
     http_method = "POST"
-    uri         = "https://${var.region}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${var.project_id}/jobs/${google_cloud_run_v2_job.weekly_full_scan.name}:run"
+    uri         = "https://${var.region}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${var.project_id}/jobs/${google_cloud_run_v2_job.weekly_full_scan[0].name}:run"
 
     oauth_token {
       service_account_email = google_service_account.cloud_scheduler_sa.email
@@ -64,7 +66,7 @@ resource "google_cloud_scheduler_job" "weekly_trigger" {
 
   depends_on = [
     google_project_service.required_apis,
-    google_cloud_run_v2_job.weekly_full_scan,
+    google_cloud_run_v2_job.weekly_full_scan[0],
     google_service_account.cloud_scheduler_sa,
     google_project_iam_member.scheduler_invoker
   ]

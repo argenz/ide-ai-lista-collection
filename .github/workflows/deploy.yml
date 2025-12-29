@@ -48,7 +48,11 @@ jobs:
             --image=gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
             --region=${{ env.GCP_REGION }}
 
-          # Update weekly full scan job
-          gcloud run jobs update weekly-full-scan \
-            --image=gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
-            --region=${{ env.GCP_REGION }}
+          # Update weekly full scan job (if it exists)
+          if gcloud run jobs describe weekly-full-scan --region=${{ env.GCP_REGION }} &>/dev/null; then
+            gcloud run jobs update weekly-full-scan \
+              --image=gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+              --region=${{ env.GCP_REGION }}
+          else
+            echo "Weekly full scan job not deployed (disabled in Terraform)"
+          fi

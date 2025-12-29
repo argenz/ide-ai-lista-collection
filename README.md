@@ -142,6 +142,12 @@ cp terraform.tfvars.example terraform.tfvars
 # Edit terraform.tfvars with your values
 ```
 
+**Note on Weekly Full Scan Job:**
+The weekly full scan job is **disabled by default** to avoid API quota issues (uses 600-1000 requests per scan). To enable it, add to your `terraform.tfvars`:
+```hcl
+enable_weekly_job = true
+```
+
 ### Deploy Infrastructure
 
 ```bash

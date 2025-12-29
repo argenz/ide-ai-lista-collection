@@ -93,6 +93,12 @@ variable "daily_job_cpu" {
 }
 
 # Weekly Full Scan Job Variables
+variable "enable_weekly_job" {
+  description = "Enable or disable the weekly full scan job and scheduler"
+  type        = bool
+  default     = false # Disabled by default to avoid API quota issues
+}
+
 variable "weekly_job_schedule" {
   description = "Cron schedule for weekly full scan job (UTC)"
   type        = string

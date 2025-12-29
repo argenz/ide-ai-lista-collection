@@ -1,15 +1,15 @@
 -- Idealista Data Collection Database Schema
 -- PostgreSQL 15+
 
--- Drop tables if they exist (for clean reinstall)
-DROP TABLE IF EXISTS api_requests CASCADE;
-DROP TABLE IF EXISTS listing_images CASCADE;
-DROP TABLE IF EXISTS listing_details CASCADE;
-DROP TABLE IF EXISTS listings CASCADE;
+-- NOTE: For local development reset, manually run:
+--   DROP TABLE IF EXISTS api_requests CASCADE;
+--   DROP TABLE IF EXISTS listing_images CASCADE;
+--   DROP TABLE IF EXISTS listing_details CASCADE;
+--   DROP TABLE IF EXISTS listings CASCADE;
 
 -- Table: listings
 -- Tracks property lifecycle and activity status
-CREATE TABLE listings (
+CREATE TABLE IF NOT EXISTS listings (
     property_code VARCHAR(20) PRIMARY KEY,
     first_seen_at TIMESTAMP NOT NULL DEFAULT NOW(),
     last_seen_at TIMESTAMP NOT NULL DEFAULT NOW(),
@@ -23,7 +23,7 @@ CREATE TABLE listings (
 
 -- Table: listing_details
 -- Stores property data and price history
-CREATE TABLE listing_details (
+CREATE TABLE IF NOT EXISTS listing_details (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     property_code VARCHAR(20) NOT NULL UNIQUE REFERENCES listings(property_code) ON DELETE CASCADE,
     price INTEGER NOT NULL,
@@ -33,7 +33,7 @@ CREATE TABLE listing_details (
 
 -- Table: listing_images (for future use in Phase 5.2)
 -- Stores one image per tag per listing
-CREATE TABLE listing_images (
+CREATE TABLE IF NOT EXISTS listing_images (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     property_code VARCHAR(20) NOT NULL REFERENCES listings(property_code) ON DELETE CASCADE,
     image_tag VARCHAR(50) NOT NULL,
@@ -45,12 +45,12 @@ CREATE TABLE listing_images (
 );
 
 -- Indices for performance
-CREATE INDEX idx_listings_is_active ON listings(is_active);
-CREATE INDEX idx_listings_last_seen_at ON listings(last_seen_at);
+CREATE INDEX IF NOT EXISTS idx_listings_is_active ON listings(is_active);
+CREATE INDEX IF NOT EXISTS idx_listings_last_seen_at ON listings(last_seen_at);
 -- TODO: Remove this index when publication_date field is removed
-CREATE INDEX idx_listings_publication_date ON listings(publication_date);
-CREATE INDEX idx_listing_details_price ON listing_details(price);
-CREATE INDEX idx_listing_images_property_code ON listing_images(property_code);
+CREATE INDEX IF NOT EXISTS idx_listings_publication_date ON listings(publication_date);
+CREATE INDEX IF NOT EXISTS idx_listing_details_price ON listing_details(price);
+CREATE INDEX IF NOT EXISTS idx_listing_images_property_code ON listing_images(property_code);
 
 -- Comments for documentation
 COMMENT ON TABLE listings IS 'Tracks property lifecycle and activity status';
@@ -68,7 +68,7 @@ COMMENT ON COLUMN listing_details.all_fields_json IS 'Complete API response for 
 
 -- Table: api_requests
 -- Tracks all Idealista API requests for quota monitoring and analytics
-CREATE TABLE api_requests (
+CREATE TABLE IF NOT EXISTS api_requests (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     request_type VARCHAR(50) NOT NULL,  -- 'oauth_token', 'search', etc.
     endpoint VARCHAR(255) NOT NULL,
@@ -81,10 +81,10 @@ CREATE TABLE api_requests (
 );
 
 -- Indices for api_requests
-CREATE INDEX idx_api_requests_created_at ON api_requests(created_at);
-CREATE INDEX idx_api_requests_type ON api_requests(request_type);
-CREATE INDEX idx_api_requests_job_id ON api_requests(job_id);
-CREATE INDEX idx_api_requests_status ON api_requests(status_code);
+CREATE INDEX IF NOT EXISTS idx_api_requests_created_at ON api_requests(created_at);
+CREATE INDEX IF NOT EXISTS idx_api_requests_type ON api_requests(request_type);
+CREATE INDEX IF NOT EXISTS idx_api_requests_job_id ON api_requests(job_id);
+CREATE INDEX IF NOT EXISTS idx_api_requests_status ON api_requests(status_code);
 
 -- Comments for api_requests
 COMMENT ON TABLE api_requests IS 'Tracks all Idealista API requests for quota monitoring';

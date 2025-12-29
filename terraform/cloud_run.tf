@@ -114,6 +114,8 @@ resource "google_cloud_run_v2_job" "daily_new_listings" {
 
 # Cloud Run Job for weekly full scan collection
 resource "google_cloud_run_v2_job" "weekly_full_scan" {
+  count    = var.enable_weekly_job ? 1 : 0
+
   name     = "weekly-full-scan"
   location = var.region
   project  = var.project_id
