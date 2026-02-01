@@ -29,6 +29,7 @@ resource "google_sql_database_instance" "ideailista_db" {
     # Data is public property listings, so security risk is minimal
     ip_configuration {
       ipv4_enabled    = true
+      private_network = google_compute_network.vpc.id  # Keep private IP to avoid recreation
       ssl_mode        = "ENCRYPTED_ONLY"
 
       # Allow connections from anywhere (Cloud Run IPs are dynamic)
