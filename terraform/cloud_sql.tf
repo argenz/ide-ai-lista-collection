@@ -24,13 +24,19 @@ resource "google_sql_database_instance" "ideailista_db" {
       }
     }
 
-    # IP configuration - private IP only for security
+    # IP configuration - public IP with SSL required
+    # Using public IP to avoid VPC connector costs (~$10-15/month)
+    # Data is public property listings, so security risk is minimal
     ip_configuration {
-      ipv4_enabled    = false
-      private_network = google_compute_network.vpc.id
-      ssl_mode        = "ALLOW_UNENCRYPTED_AND_ENCRYPTED" # Use ENCRYPTED_ONLY in production
+      ipv4_enabled    = true
+      ssl_mode        = "ENCRYPTED_ONLY"
 
-      # No authorized networks needed with private IP
+      # Allow connections from anywhere (Cloud Run IPs are dynamic)
+      # Security is enforced via SSL + strong password
+      authorized_networks {
+        name  = "allow-all"
+        value = "0.0.0.0/0"
+      }
     }
 
     # Insights configuration for monitoring
