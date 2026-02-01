@@ -18,9 +18,9 @@ output "cloud_sql_instance_name" {
   value       = google_sql_database_instance.ideailista_db.name
 }
 
-output "cloud_sql_private_ip" {
-  description = "Cloud SQL private IP address"
-  value       = google_sql_database_instance.ideailista_db.private_ip_address
+output "cloud_sql_public_ip" {
+  description = "Cloud SQL public IP address"
+  value       = google_sql_database_instance.ideailista_db.public_ip_address
 }
 
 output "gcs_bucket_name" {
@@ -43,14 +43,15 @@ output "cloud_run_job_name" {
   value       = google_cloud_run_v2_job.daily_new_listings.name
 }
 
-output "vpc_connector_name" {
-  description = "VPC Access connector name"
-  value       = google_vpc_access_connector.connector.name
-}
+# VPC connector removed to save costs
+# output "vpc_connector_name" {
+#   description = "VPC Access connector name"
+#   value       = google_vpc_access_connector.connector.name
+# }
 
 output "database_url" {
-  description = "Database connection string (use with Cloud SQL Proxy or private IP)"
-  value       = "postgresql://appuser:${var.db_password}@${google_sql_database_instance.ideailista_db.private_ip_address}:5432/ideailista-db"
+  description = "Database connection string (public IP with SSL)"
+  value       = "postgresql://appuser:${var.db_password}@${google_sql_database_instance.ideailista_db.public_ip_address}:5432/ideailista-db?sslmode=require"
   sensitive   = true
 }
 

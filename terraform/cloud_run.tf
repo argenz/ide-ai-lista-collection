@@ -86,13 +86,8 @@ resource "google_cloud_run_v2_job" "daily_new_listings" {
         }
       }
 
-      # VPC Access for Cloud SQL connection
-      # Use PRIVATE_RANGES_ONLY so Cloud SQL (private IP) goes through VPC,
-      # but external APIs (api.idealista.com) go directly to internet
-      vpc_access {
-        connector = google_vpc_access_connector.connector.id
-        egress    = "PRIVATE_RANGES_ONLY"
-      }
+      # VPC Access removed - using Cloud SQL public IP instead
+      # This saves ~$10-15/month on VPC connector costs
     }
   }
 
@@ -105,7 +100,6 @@ resource "google_cloud_run_v2_job" "daily_new_listings" {
   depends_on = [
     google_project_service.required_apis,
     google_service_account.cloud_run_sa,
-    google_vpc_access_connector.connector,
     google_secret_manager_secret_version.api_key,
     google_secret_manager_secret_version.api_secret,
     google_secret_manager_secret_version.database_url
@@ -202,13 +196,8 @@ resource "google_cloud_run_v2_job" "weekly_full_scan" {
         }
       }
 
-      # VPC Access for Cloud SQL connection
-      # Use PRIVATE_RANGES_ONLY so Cloud SQL (private IP) goes through VPC,
-      # but external APIs (api.idealista.com) go directly to internet
-      vpc_access {
-        connector = google_vpc_access_connector.connector.id
-        egress    = "PRIVATE_RANGES_ONLY"
-      }
+      # VPC Access removed - using Cloud SQL public IP instead
+      # This saves ~$10-15/month on VPC connector costs
     }
   }
 
@@ -221,7 +210,6 @@ resource "google_cloud_run_v2_job" "weekly_full_scan" {
   depends_on = [
     google_project_service.required_apis,
     google_service_account.cloud_run_sa,
-    google_vpc_access_connector.connector,
     google_secret_manager_secret_version.api_key,
     google_secret_manager_secret_version.api_secret,
     google_secret_manager_secret_version.database_url
